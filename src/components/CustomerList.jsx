@@ -1,5 +1,6 @@
 import { Component } from "react";
 import { func } from "prop-types";
+import { Link } from "react-router-dom";
 import axios from "axios";
 
 class CustomerList extends Component {
@@ -36,6 +37,16 @@ class CustomerList extends Component {
         this.props.onCustomerSelect(id);
     }
 
+    deleteCustomer = (customerId) => {
+        axios.delete(`http://127.0.0.1:5000/customers/${customerId}`)
+            .then(() => {
+                this.fetchCustomers();
+            })
+            .catch(error => {
+                console.error('Error deleting customer.', error);
+            });
+    }
+
     render() {
         const { customers } = this.state;
 
@@ -44,8 +55,9 @@ class CustomerList extends Component {
                 <h3>Customers</h3>
                 <ul>
                     {customers.map((customer) => (
-                        <li key={customer.id} onClick={() => this.selectCustomer(customer.id)}>
-                            {customer.name}
+                        <li key={customer.id} >
+                            <Link to={`/edit-customer/${customer.id}`}>{customer.name}</Link>
+                            <button className="delete-btn" onClick={() => this.selectCustomer(customer.id)}>Delete</button>
                         </li>
                     ))}
                 </ul>

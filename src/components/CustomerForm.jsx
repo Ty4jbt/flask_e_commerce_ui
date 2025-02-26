@@ -1,5 +1,6 @@
 import { Component } from "react";
 import axios from "axios";
+import { func, number } from "prop-types";
 
 
 class CustomerForm extends Component {
@@ -9,8 +10,54 @@ class CustomerForm extends Component {
             name: '',
             email: '',
             phone: '',
-            errors: {}
+            errors: {},
+            selectedCustomerId: null,
+            isLoading: false
         };
+    }
+
+    fetchCustomerData = (id) => {
+        axios.get(`http://127.0.0.1:5000/customers/${id}`)
+            .then(response => {
+                const customerData = response.data;
+                this.setState({
+                    name: customerData.name,
+                    email: customerData.email,
+                    phone: customerData.phone,
+                    selectedCustomerId: id
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching customer data.', error);
+            });
+    };
+
+    componentDidMount() {
+        const { id } = this.props.params;
+        if (id) {
+            this.fetchCustomerData(id);
+        }
+    }
+
+    componentDidUpdate(prevProps) {
+        if (prevProps.customerId !== this.props.customerId) {
+            this.setState({ selectedCustomerId: this.props.customerId });
+
+            if (this.props.customerId) {
+                axios.get(`http://127.0.0.1:5000/customers/${this.props.customerId}`)
+                    .then(response => {
+                        const customerData = response.data;
+                        this.setState({
+                            name: customerData.name,
+                            email: customerData.email,
+                            phone: customerData.phone
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Error fetching customer data.', error);
+                    });
+            }
+        }
     }
 
     handleChange = (event) => {
@@ -22,15 +69,9 @@ class CustomerForm extends Component {
     validateForm = () => {
         const { name, email, phone } = this.state;
         const errors = {};
-        if (!name) {
-            errors.name = 'Name is required';
-        }
-        if (!email) {
-            errors.email = 'Email is required';
-        }
-        if (!phone) {
-            errors.phone = 'Phone is required';
-        }
+        if (!name) errors.name = 'Name is required';
+        if (!email) errors.email = 'Email is required';
+        if (!phone) errors.phone = 'Phone is required';
         return errors;
     }
 
@@ -38,7 +79,7 @@ class CustomerForm extends Component {
         event.preventDefault();
         const errors = this.validateForm();
         if (Object.keys(errors).length === 0) {
-            console.log('Submited customer: ', this.state);
+            this.setState({ isLoading: true, error: null });
             
             const customerData = {
                 name: this.state.name.trim(),
@@ -46,25 +87,34 @@ class CustomerForm extends Component {
                 phone: this.state.phone.trim()
             };
 
-            axios.post('http://127.0.0.1:5000/customers', customerData)
-                .then(response => {
-                    console.log('Data successfully submitted', response.data);
-                    // Handle the successful submission here
-                    // e.g. clear the form, show a success message, etc.
+            const apiURL = this.state.selectedCustomerId
+                ? `http://127.0.0.1:5000/customers/${this.state.selectedCustomerId}`
+                : 'http://127.0.0.1:5000/customers';
+            
+            const httpMethod(apiURL, customerData)
+                .then(() => {
+                    this.setState({
+                        name: '',
+                        email: '',
+                        phone: '',
+                        errors: {},
+                        selectedCustomerId: null,
+                        isLoading: false
+                    });
+                    this.props.navigate('/customers')
+                    this.setState({ isLoading: false });
                 })
                 .catch(error => {
-                    console.error('There was an error submitting the form.', error);
-                    // Handle the error here
-                    // e.g. display an error message, etc.
+                    this.setState({ error: error.toString(), isLoading: false });
                 });
 
         } else {
             this.setState({ errors });
         }
-    }
+    };
 
     render() {
-        const { name, email, phone, errors } = this.state;
+        const { name, email, phone, errors, error, isLoading } = this.state;
 
         return (
             <form onSubmit={this.handleSubmit}>
@@ -90,6 +140,11 @@ class CustomerForm extends Component {
 
     };
 
+};
+
+CustomerForm.propTypes = {
+    customerId: number,
+    onCustomerSelect: func
 };
 
 export default CustomerForm;
